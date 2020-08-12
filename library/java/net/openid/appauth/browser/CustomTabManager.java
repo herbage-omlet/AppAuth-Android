@@ -16,8 +16,11 @@ package net.openid.appauth.browser;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Looper;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
@@ -41,6 +44,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * easier.
  */
 public class CustomTabManager {
+    public static final String ACTION_CANNOT_WARM_UP_TABS_CLIENT = "ACTION_CANNOT_WARMUP_TABS_CLIENT";
+    public static final String EXTRA_COMPONENT_PACKAGE_NAME = "EXTRA_COMPONENT_PACKAGE_NAME";
 
     /**
      * Wait for at most this amount of time for the browser connection to be established.
@@ -81,8 +86,22 @@ public class CustomTabManager {
             public void onCustomTabsServiceConnected(ComponentName componentName,
                                                      CustomTabsClient customTabsClient) {
                 Logger.debug("CustomTabsService is connected");
-                customTabsClient.warmup(0);
-                setClient(customTabsClient);
+                try {
+                    customTabsClient.warmup(0);
+                    setClient(customTabsClient);
+                } catch (SecurityException e) {
+                    Context context = mContextRef.get();
+                    if (context != null) {
+                        Intent intent = new Intent();
+                        intent.setAction(ACTION_CANNOT_WARM_UP_TABS_CLIENT);
+                        intent.setPackage(context.getPackageName());
+                        if (componentName != null) {
+                            intent.putExtra(EXTRA_COMPONENT_PACKAGE_NAME, componentName.getPackageName());
+                        }
+                        context.sendBroadcast(intent);
+                    }
+                    Logger.debugWithStack(e, "Failed to warmup client, component: " + componentName);
+                }
             }
 
             private void setClient(@Nullable CustomTabsClient client) {
