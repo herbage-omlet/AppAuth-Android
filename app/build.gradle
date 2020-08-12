@@ -14,6 +14,7 @@ android {
         manifestPlaceholders = [
                 'appAuthRedirectScheme': 'net.openid.appauthdemo'
         ]
+        versionCode 1
     }
 
     signingConfigs {
